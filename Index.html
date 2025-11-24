@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memorice - Breden Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow-x: hidden;
+        }
+        
+        .card-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .card-3d.flipped {
+            transform: rotateY(180deg);
+        }
+        
+        .card-3d:hover:not(.flipped) {
+            transform: scale(1.05) translateY(-5px);
+            transition: transform 0.4s ease;
+        }
+        
+        .card-face {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        
+        .card-back {
+            transform: rotateY(180deg);
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-15px) scale(1.02); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.05); }
+        }
+        
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-2deg); }
+            75% { transform: rotate(2deg); }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes confettiRain {
+            0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        
+        @keyframes donutSpin {
+            0% { transform: rotate(0deg) translateY(0px); }
+            25% { transform: rotate(90deg) translateY(-10px); }
+            50% { transform: rotate(180deg) translateY(0px); }
+            75% { transform: rotate(270deg) translateY(-10px); }
+            100% { transform: rotate(360deg) translateY(0px); }
+        }
+        
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+        
+        @keyframes rainbow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        
+        .animate-bounce {
+            animation: bounce 2s infinite;
+        }
+        
+        .animate-pulse {
+            animation: pulse 3s infinite;
+        }
+        
+        .animate-wiggle {
+            animation: wiggle 3s ease-in-out infinite;
+        }
+        
+        .animate-fadeInUp {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+        
+        .animate-confetti {
+            animation: confettiRain 4s linear infinite;
+        }
+        
+        .animate-donut {
+            animation: donutSpin 8s ease-in-out infinite;
+        }
+        
+        .animate-sparkle {
+            animation: sparkle 2.5s ease-in-out infinite;
+        }
+        
+        .animate-rainbow {
+            animation: rainbow 5s linear infinite;
+        }
+        
+        .card-matched {
+            animation: bounce 1s ease-out, rainbow 4s linear infinite;
+        }
+        
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 20px;
+            top: -50px;
+            animation: confettiRain 3s linear infinite;
+        }
+        
+        .sparkle-star {
+            position: absolute;
+            font-size: 2rem;
+            animation: sparkle 1s ease-in-out infinite;
+        }
+        
+        .floating-donut {
+            position: absolute;
+            font-size: 3rem;
+            opacity: 0.15;
+            animation: donutSpin 6s ease-in-out infinite;
+        }
+        
+        .shake {
+            animation: wiggle 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+        const emojis = ['🍩', '🎂', '🧁', '🍪', '🥐', '🥨', '🍰', '🥯'];
+        
+        let cards = [];
+        let flipped = [];
+        let solved = [];
+        let moves = 0;
+        let gameWon = false;
+        let showInitial = true;
+        let timer = 0;
+        let gameStarted = false;
+        let timerInterval = null;
+        let confettiActive = false;
+
+        function initializeGame() {
+            const shuffledCards = [...emojis, ...emojis]
+                .sort(() => Math.random() - 0.5)
+                .map((emoji, index) => ({ id: index, emoji }));
+            
+            cards = shuffledCards;
+            flipped = [];
+            solved = [];
+            moves = 0;
+            gameWon = false;
+            showInitial = true;
+            timer = 0;
+            gameStarted = false;
+            confettiActive = false;
+            
+            if (timerInterval) clearInterval(timerInterval);
+            
+            render();
+            
+            // Mostrar cartas por 2 segundos con animación
+            setTimeout(() => {
+                showInitial = false;
+                gameStarted = true;
+                startTimer();
+                render();
+            }, 2000);
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                if (!gameWon) {
+                    timer++;
+                    render();
+                }
+            }, 1000);
+        }
+
+        function createConfetti() {
+            const colors = ['#FCD34D', '#34D399', '#F87171', '#60A5FA', '#A78BFA', '#FB923C'];
+            let confettiHTML = '';
+            
+            for (let i = 0; i < 50; i++) {
+                const left = Math.random() * 100;
+                const delay = Math.random() * 4;
+                const duration = 3 + Math.random() * 2;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
+                confettiHTML += `
+                    <div class="confetti-piece" 
+                         style="left: ${left}%; 
+                                background: ${color}; 
+                                animation-delay: ${delay}s;
+                                animation-duration: ${duration}s;
+                                transform: rotate(${Math.random() * 360}deg);">
+                    </div>
+                `;
+            }
+            return confettiHTML;
+        }
+
+        function createSparkles() {
+            const sparkles = ['✨', '⭐', '💫', '🌟'];
+            let sparkleHTML = '';
+            
+            for (let i = 0; i < 20; i++) {
+                const top = 10 + Math.random() * 80;
+                const left = 5 + Math.random() * 90;
+                const delay = Math.random() * 2;
+                const sparkle = sparkles[Math.floor(Math.random() * sparkles.length)];
+                
+                sparkleHTML += `
+                    <div class="sparkle-star" 
+                         style="top: ${top}%; 
+                                left: ${left}%; 
+                                animation-delay: ${delay}s;">
+                        ${sparkle}
+                    </div>
+                `;
+            }
+            return sparkleHTML;
+        }
+
+        function playSound(type) {
+            // Simular sonidos con vibración visual
+            if (type === 'flip') {
+                // Efecto visual de volteo
+            } else if (type === 'match') {
+                confettiActive = true;
+                setTimeout(() => { confettiActive = false; }, 1000);
+            }
+        }
+
+        function handleCardClick(id) {
+            if (!gameStarted || showInitial || flipped.length === 2 || flipped.includes(id) || solved.includes(id)) {
+                return;
+            }
+
+            playSound('flip');
+            const newFlipped = [...flipped, id];
+            flipped = newFlipped;
+            render();
+
+            if (newFlipped.length === 2) {
+                moves++;
+                const [first, second] = newFlipped;
+                if (cards[first].emoji === cards[second].emoji) {
+                    playSound('match');
+                    setTimeout(() => {
+                        solved = [...solved, first, second];
+                        flipped = [];
+                        
+                        if (solved.length === emojis.length * 2) {
+                            gameWon = true;
+                            confettiActive = true;
+                            clearInterval(timerInterval);
+                        }
+                        render();
+                    }, 500);
+                } else {
+                    setTimeout(() => {
+                        flipped = [];
+                        render();
+                    }, 1000);
+                }
+            }
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+            
+            app.innerHTML = `
+                <div class="min-h-screen flex flex-col items-center justify-center p-8 relative overflow-hidden"
+                     style="background: linear-gradient(180deg, #EC4899 0%, #EC4899 15%, #FFFFFF 15%, #FFFFFF 85%, #8B4513 85%, #8B4513 100%);">
+                    
+                    ${confettiActive ? createConfetti() : ''}
+                    ${gameWon ? createSparkles() : ''}
+                    
+                    <!-- Marco rosa superior con goteo -->
+                    <div class="absolute top-0 left-0 right-0 h-48 z-0" style="background: #EC4899">
+                        <svg class="absolute bottom-0 w-full" style="height: 80px" preserveAspectRatio="none" viewBox="0 0 1600 80">
+                            <path d="M0,0 Q50,50 100,15 Q150,30 200,10 Q250,45 300,20 Q350,35 400,15 Q450,50 500,25 Q550,40 600,10 Q650,45 700,20 Q750,50 800,15 Q850,35 900,25 Q950,50 1000,20 Q1050,40 1100,10 Q1150,50 1200,25 Q1250,35 1300,15 Q1350,45 1400,20 Q1450,50 1500,25 Q1550,40 1600,15 L1600,0 L0,0 Z" 
+                                  fill="#EC4899"/>
+                        </svg>
+                        <svg class="absolute bottom-0 w-full" style="height: 60px" preserveAspectRatio="none" viewBox="0 0 1600 60">
+                            <path d="M0,0 Q40,40 80,10 Q120,35 160,15 Q200,40 240,20 Q280,45 320,15 Q360,40 400,20 Q440,50 480,25 Q520,35 560,15 Q600,45 640,20 Q680,40 720,15 Q760,50 800,20 Q840,40 880,15 Q920,45 960,25 Q1000,40 1040,15 Q1080,50 1120,20 Q1160,35 1200,15 Q1240,45 1280,25 Q1320,40 1360,15 Q1400,50 1440,20 Q1480,35 1520,15 Q1560,45 1600,25 L1600,0 L0,0 Z" 
+                                  fill="#FECACA"/>
+                        </svg>
+                    </div>
+
+                    <!-- Donas flotantes animadas -->
+                    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                        <div class="floating-donut" style="top: 15%; left: 8%; animation-delay: 0s;">🍩</div>
+                        <div class="floating-donut" style="top: 25%; left: 20%; animation-delay: 1s;">🍩</div>
+                        <div class="floating-donut" style="top: 35%; left: 85%; animation-delay: 2s;">🍩</div>
+                        <div class="floating-donut" style="top: 45%; left: 10%; animation-delay: 0.5s;">🍩</div>
+                        <div class="floating-donut" style="top: 55%; left: 90%; animation-delay: 1.5s;">🍩</div>
+                        <div class="floating-donut" style="top: 65%; left: 15%; animation-delay: 2.5s;">🍩</div>
+                        <div class="floating-donut" style="top: 75%; left: 80%; animation-delay: 3s;">🍩</div>
+                    </div>
+                    
+                    <!-- Barra de madera -->
+                    <div class="absolute bottom-0 left-0 right-0 h-32 z-0"
+                         style="background: linear-gradient(180deg, #8B4513 0%, #6B3410 50%, #8B4513 100%); box-shadow: inset 0 4px 8px rgba(0,0,0,0.3), inset 0 -4px 8px rgba(0,0,0,0.2)">
+                        <div class="absolute inset-0 flex">
+                            <div class="flex-1 border-r-2 border-black/20"></div>
+                            <div class="flex-1 border-r-2 border-black/20"></div>
+                            <div class="flex-1 border-r-2 border-black/20"></div>
+                            <div class="flex-1 border-r-2 border-black/20"></div>
+                            <div class="flex-1 border-r-2 border-black/20"></div>
+                            <div class="flex-1 border-r-2 border-black/20"></div>
+                            <div class="flex-1"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Contenido -->
+                    <div class="relative z-10 w-full flex flex-col items-center pb-32">
+                        <!-- Header -->
+                        <div class="text-center mb-8 animate-fadeInUp">
+                            <h1 class="text-7xl font-bold text-white mb-4 drop-shadow-lg flex items-center justify-center gap-4">
+                                <span class="text-yellow-300 animate-pulse text-6xl">✨</span>
+                                <span class="animate-wiggle inline-block">MEMORICE</span>
+                                <span class="text-yellow-300 animate-pulse text-6xl">✨</span>
+                            </h1>
+                            <div class="flex gap-6 justify-center items-center text-3xl font-bold">
+                                <div class="bg-black/70 backdrop-blur-lg rounded-2xl px-8 py-3 text-white border-4 border-white/50 shadow-xl transform hover:scale-110 transition-transform">
+                                    Puntos: <span class="text-yellow-300 animate-pulse">${moves}</span>
+                                </div>
+                                <div class="bg-black/70 backdrop-blur-lg rounded-2xl px-8 py-3 text-white border-4 border-white/50 shadow-xl transform hover:scale-110 transition-transform">
+                                    Tiempo: <span class="text-yellow-300 animate-pulse">${timer}s</span>
+                                </div>
+                                <button onclick="initializeGame()" 
+                                        class="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-2xl px-8 py-3 flex items-center gap-3 transition-all transform hover:scale-110 hover:rotate-3 border-4 border-white/50 shadow-xl cursor-pointer">
+                                    🔄 Reiniciar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Game Board -->
+                        <div class="grid grid-cols-4 gap-8 max-w-7xl">
+                            ${cards.map((card, index) => {
+                                const isFlipped = showInitial || flipped.includes(card.id) || solved.includes(card.id);
+                                const isSolved = solved.includes(card.id);
+                                const animationDelay = index * 0.1;
+                                
+                                return `
+                                    <div onclick="handleCardClick(${card.id})" 
+                                         class="relative cursor-pointer animate-fadeInUp"
+                                         style="perspective: 1000px; animation-delay: ${animationDelay}s;">
+                                        <div class="card-3d relative w-48 h-48 ${isFlipped ? 'flipped' : ''} ${isSolved ? 'card-matched' : ''}"
+                                             style="transform-style: preserve-3d;">
+                                            
+                                            <!-- Front (logo Breden Master) -->
+                                            <div class="card-face absolute w-full h-full rounded-3xl flex items-center justify-center border-4 shadow-2xl border-white transition-all"
+                                                 style="background-color: #DC2626;">
+                                                <div class="w-full h-full flex flex-col items-center justify-center p-6">
+                                                    <div class="bg-white rounded-t-full w-32 h-24 flex items-center justify-center mb-2 relative">
+                                                        <div class="text-center">
+                                                            <div class="text-red-600 font-bold text-2xl leading-tight">Breden</div>
+                                                            <div class="text-red-600 font-bold text-xl">Master.</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-white text-center mt-4">
+                                                        <div class="font-bold text-3xl leading-tight">Felicidad</div>
+                                                        <div class="text-lg mt-1">en cada mordida</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Back (contenido) -->
+                                            <div class="card-face card-back absolute w-full h-full rounded-3xl flex items-center justify-center border-4 shadow-2xl transition-all ${
+                                                isSolved ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-300 animate-pulse' : 'bg-white border-gray-200'
+                                            }">
+                                                <span class="drop-shadow-lg text-8xl ${isSolved ? 'animate-bounce' : ''}">${card.emoji}</span>
+                                                ${isSolved ? '<div class="absolute top-2 right-2 text-4xl animate-sparkle">✨</div>' : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Victory Modal -->
+                    ${gameWon ? `
+                        <div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeInUp">
+                            <div class="bg-gradient-to-br from-yellow-400 via-orange-400 to-pink-500 rounded-3xl p-16 text-center border-8 border-white shadow-2xl animate-bounce">
+                                <div class="text-9xl mb-6 animate-wiggle">🏆</div>
+                                <h2 class="text-8xl font-bold text-white mb-6 animate-pulse">¡GANASTE!</h2>
+                                <p class="text-5xl text-white mb-4">
+                                    <span class="animate-bounce inline-block">🎉</span>
+                                    Completado en 
+                                    <span class="font-bold text-yellow-200 animate-pulse">${moves}</span> 
+                                    movimientos
+                                    <span class="animate-bounce inline-block">🎉</span>
+                                </p>
+                                <p class="text-4xl text-white mb-8">
+                                    Tiempo: <span class="font-bold text-yellow-200">${timer}s</span>
+                                </p>
+                                <button onclick="initializeGame()" 
+                                        class="bg-white text-purple-600 text-4xl font-bold rounded-2xl px-12 py-6 hover:bg-purple-100 transition-all transform hover:scale-110 hover:rotate-3 cursor-pointer shadow-2xl animate-pulse">
+                                    🎮 Jugar de Nuevo
+                                </button>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        // Iniciar el juego
+        initializeGame();
+    </script>
+</body>
+</html>
